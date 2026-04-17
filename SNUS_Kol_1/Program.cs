@@ -1,11 +1,24 @@
-﻿
-namespace SNUS_Kol_1
+﻿namespace SNUS_Kol_1
 {
     class Program
     {
         private static readonly SemaphoreSlim _logLock = new(1, 1);
 
-        static void Main()
+        static async Task Main(string[] args)
+        {
+            bool testMode = false; // toggle this
+
+            if (testMode)
+            {
+                await RunTests();
+            }
+            else
+            {
+                await RunSystem();
+            }
+        }
+
+        static async Task RunSystem()
         {
             var config = XmlConfigLoader.Load("SystemConfig.xml");
 
@@ -33,7 +46,7 @@ namespace SNUS_Kol_1
                 await _logLock.WaitAsync();
                 try
                 {
-                    string log = $"[{DateTime.Now}] FAILURE {job.Id}, {ex.GetType()}";
+                    string log = $"[{DateTime.Now}] FAILURE {job.Id}, {ex.Message}";
                     await File.AppendAllTextAsync("log.txt", log + "\n");
                 }
                 finally
@@ -80,15 +93,22 @@ namespace SNUS_Kol_1
                 });
             }
 
-            Console.ReadLine();
+            Console.WriteLine("System running... Press ENTER to exit.");
+            await Task.Run(() => Console.ReadLine()); // keeps async context alive
         }
 
         static async Task RunTests()
         {
+            Console.WriteLine("Running tests...\n");
+
             await ProcessingSystemTests.Test_SuccessfulJob();
             await ProcessingSystemTests.Test_TimeoutAbort();
             ProcessingSystemTests.Test_PriorityQueue();
             await ProcessingSystemTests.Test_Idempotency();
+            await ProcessingSystemTests.Test_QueueFull();
+
+            Console.WriteLine("\nAll tests finished. Press ENTER to exit.");
+            Console.ReadLine();
         }
     }
 }

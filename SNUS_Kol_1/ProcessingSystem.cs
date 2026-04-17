@@ -28,7 +28,6 @@ namespace SNUS_Kol_1
                 Task.Run(WorkerLoop);
                 Console.WriteLine($"Worker {i} started");
             }
-                
 
             Task.Run(ReportLoop);
         }
@@ -50,11 +49,10 @@ namespace SNUS_Kol_1
                 {
                     _submitted.Remove(job.Id); // rollback
 
-                    Task.Run(async () =>
+                    if (JobFailed != null)
                     {
-                        if (JobFailed != null)
-                            await JobFailed(job, new Exception("Queue full"));
-                    });
+                        _ = JobFailed(job, new Exception("Queue full")); // fire async, but immediately scheduled
+                    }
 
                     tcs.SetException(new Exception("Queue full"));
 

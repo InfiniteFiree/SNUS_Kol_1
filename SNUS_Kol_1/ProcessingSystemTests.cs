@@ -28,7 +28,7 @@ namespace SNUS_Kol_1
             var job = new Job
             {
                 Type = JobType.IO,
-                Payload = "delay:5000", // > 2s → timeout
+                Payload = "delay:5000", // > 2s -> timeout
                 Priority = 1
             };
 
@@ -94,6 +94,54 @@ namespace SNUS_Kol_1
             catch
             {
                 Console.WriteLine("Test_Idempotency PASSED");
+            }
+        }
+
+        public static async Task Test_QueueFull()
+        {
+            var system = new ProcessingSystem(0, 1); // max 1 job
+
+            bool failedEventTriggered = false;
+
+            system.JobFailed += async (job, ex) =>
+            {
+                if (ex.Message.Contains("Queue full"))
+                    failedEventTriggered = true;
+
+                await Task.CompletedTask;
+            };
+
+            var job1 = new Job
+            {
+                Type = JobType.IO,
+                Payload = "delay:500",
+                Priority = 1
+            };
+
+            var job2 = new Job
+            {
+                Type = JobType.IO,
+                Payload = "delay:500",
+                Priority = 1
+            };
+
+            // Fill queue
+            system.Submit(job1);
+
+            // This one should fail
+            var handle = system.Submit(job2);
+
+            try
+            {
+                await handle.Result;
+                Console.WriteLine("Test_QueueFull FAILED (no exception)");
+            }
+            catch
+            {
+                if (failedEventTriggered)
+                    Console.WriteLine("Test_QueueFull PASSED");
+                else
+                    Console.WriteLine("Test_QueueFull FAILED (event not triggered)");
             }
         }
     }
